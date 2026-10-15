@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import axios from 'axios'
+import personService from './services/persons'
 
 const Filter = ({ filter, handleFilterChange }) => (
   <div>
@@ -21,14 +21,17 @@ const PersonForm = ({ addPerson, newName, handleNameChange, newNumber, handleNum
   </form>
 )
 
-const Person = ({ person }) => (
-  <p>{person.name} {person.number}</p>
+const Person = ({ person, deletePerson }) => (
+  <p>
+    {person.name} {person.number} 
+    <button onClick={() => deletePerson(person.id, person.name)}>delete</button>
+  </p>
 )
 
-const Persons = ({ personsToShow }) => (
+const Persons = ({ personsToShow, deletePerson }) => (
   <div>
     {personsToShow.map(person => (
-      <Person key={person.name} person={person} />
+      <Person key={person.id} person={person} deletePerson={deletePerson} />
     ))}
   </div>
 )
@@ -40,30 +43,62 @@ const App = () => {
   const [filter, setFilter] = useState('')
 
   useEffect(() => {
-    axios
-      .get('http://localhost:3001/persons')
-      .then(response => {
-        setPersons(response.data)
+    personService
+      .getAll()
+      .then(initialPersons => {
+        setPersons(initialPersons)
       })
   }, [])
 
   const addPerson = (event) => {
     event.preventDefault()
     
-    if (persons.some(person => person.name === newName)) {
-      alert(`${newName} is already added to phonebook`)
+    const existingPerson = persons.find(person => person.name === newName)
+
+    // Si la persona ya existe, preguntamos si quiere actualizar su número (Ejercicio 2.15)
+    if (existingPerson) {
+      if (window.confirm(`${newName} is already added to phonebook, replace the old number with a new one?`)) {
+        const changedPerson = { ...existingPerson, number: newNumber }
+        
+        personService
+          .update(existingPerson.id, changedPerson)
+          .then(returnedPerson => {
+            setPersons(persons.map(person => person.id !== existingPerson.id ? person : returnedPerson))
+            setNewName('')
+            setNewNumber('')
+          })
+          .catch(error => {
+            alert(`Information of ${newName} has already been removed from server`)
+            setPersons(persons.filter(p => p.id !== existingPerson.id))
+          })
+      }
       return
     }
 
-    // Nota: Aunque añadamos la persona al estado visual, todavía no se guarda en el servidor db.json.
+    // Si la persona no existe, la creamos y la enviamos al servidor (Ejercicio 2.12)
     const personObject = { 
       name: newName,
       number: newNumber 
     }
     
-    setPersons(persons.concat(personObject))
-    setNewName('')
-    setNewNumber('')
+    personService
+      .create(personObject)
+      .then(returnedPerson => {
+        setPersons(persons.concat(returnedPerson))
+        setNewName('')
+        setNewNumber('')
+      })
+  }
+
+  // Lógica para borrar a una persona (Ejercicio 2.14)
+  const deletePerson = (id, name) => {
+    if (window.confirm(`Delete ${name}?`)) {
+      personService
+        .remove(id)
+        .then(() => {
+          setPersons(persons.filter(person => person.id !== id))
+        })
+    }
   }
 
   const handleNameChange = (event) => setNewName(event.target.value)
@@ -92,7 +127,7 @@ const App = () => {
 
       <h3>Numbers</h3>
       
-      <Persons personsToShow={personsToShow} />
+      <Persons personsToShow={personsToShow} deletePerson={deletePerson} />
     </div>
   )
 }
