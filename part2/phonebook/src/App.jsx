@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import axios from 'axios'
 
 const Filter = ({ filter, handleFilterChange }) => (
   <div>
@@ -33,26 +34,28 @@ const Persons = ({ personsToShow }) => (
 )
 
 const App = () => {
-  // Datos iniciales ficticios (Ejercicio 2.9)
-  const [persons, setPersons] = useState([
-    { name: 'Arto Hellas', number: '040-123456' },
-    { name: 'Ada Lovelace', number: '39-44-5323523' },
-    { name: 'Dan Abramov', number: '12-43-234345' },
-    { name: 'Mary Poppendieck', number: '39-23-6423122' }
-  ]) 
+  const [persons, setPersons] = useState([]) 
   const [newName, setNewName] = useState('')
   const [newNumber, setNewNumber] = useState('')
   const [filter, setFilter] = useState('')
 
+  useEffect(() => {
+    axios
+      .get('http://localhost:3001/persons')
+      .then(response => {
+        setPersons(response.data)
+      })
+  }, [])
+
   const addPerson = (event) => {
     event.preventDefault()
     
-    // Comprobar si el nombre ya existe (Ejercicio 2.7)
     if (persons.some(person => person.name === newName)) {
       alert(`${newName} is already added to phonebook`)
       return
     }
 
+    // Nota: Aunque añadamos la persona al estado visual, todavía no se guarda en el servidor db.json.
     const personObject = { 
       name: newName,
       number: newNumber 
@@ -67,7 +70,6 @@ const App = () => {
   const handleNumberChange = (event) => setNewNumber(event.target.value)
   const handleFilterChange = (event) => setFilter(event.target.value)
 
-  // Lógica de filtrado insensible a mayúsculas/minúsculas (Ejercicio 2.9)
   const personsToShow = filter === ''
     ? persons
     : persons.filter(person => person.name.toLowerCase().includes(filter.toLowerCase()))
