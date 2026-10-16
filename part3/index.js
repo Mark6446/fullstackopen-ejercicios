@@ -1,120 +1,118 @@
+require('dotenv').config()
 const express = require('express')
 const morgan = require('morgan')
 const cors = require('cors')
-const app = express()
-app.use(cors())
-// Middleware para parsear el body de las peticiones a JSON
-app.use(express.json())
-app.use(express.static('dist'))
+const Person = require('./models/person')
 
-// Configuración de Morgan (Ejercicios 3.7 y 3.8)
-// Creamos un token personalizado llamado "body" que devuelve el JSON enviado en las peticiones POST
+const app = express()
+
+// Middlewares iniciales
+app.use(cors())
+app.use(express.static('dist'))
+app.use(express.json())
+
 morgan.token('body', (req) => {
   return req.method === 'POST' ? JSON.stringify(req.body) : ''
 })
-
-// Usamos morgan con un formato personalizado que incluye el nuevo token al final
 app.use(morgan(':method :url :status :res[content-length] - :response-time ms :body'))
 
-let persons = [
-  { 
-    "id": 1,
-    "name": "Arto Hellas", 
-    "number": "040-123456"
-  },
-  { 
-    "id": 2,
-    "name": "Ada Lovelace", 
-    "number": "39-44-5323523"
-  },
-  { 
-    "id": 3,
-    "name": "Dan Abramov", 
-    "number": "12-43-234345"
-  },
-  { 
-    "id": 4,
-    "name": "Mary Poppendieck", 
-    "number": "39-23-6423122"
-  }
-]
-
-// Ruta principal
-app.get('/', (request, response) => {
-  response.send('<h1>Phonebook Backend</h1>')
-})
-
-// 3.1: Devolver toda la agenda
+// 3.13: Obtener todos los contactos desde MongoDB
 app.get('/api/persons', (request, response) => {
-  response.json(persons)
+  Person.find({}).then(persons => {
+    response.json(persons)
+  })
 })
 
-// 3.2: Información general de la agenda
-app.get('/info', (request, response) => {
-  const count = persons.length
-  const date = new Date()
-  response.send(`
-    <p>Phonebook has info for ${count} people</p>
-    <p>${date}</p>
-  `)
+// 3.18: Información general consultando la base de datos
+app.get('/info', (request, response, next) => {
+  Person.countDocuments({})
+    .then(count => {
+      const date = new Date()
+      response.send(`
+        <p>Phonebook has info for ${count} people</p>
+        <p>${date}</p>
+      `)
+    })
+    .catch(error => next(error))
 })
 
-// 3.3: Obtener un solo contacto
-app.get('/api/persons/:id', (request, response) => {
-  const id = Number(request.params.id)
-  const person = persons.find(p => p.id === id)
-
-  if (person) {
-    response.json(person)
-  } else {
-    response.status(404).end()
-  }
+// 3.18: Obtener un contacto individual por ID
+app.get('/api/persons/:id', (request, response, next) => {
+  Person.findById(request.params.id)
+    .then(person => {
+      if (person) {
+        response.json(person)
+      } else {
+        response.status(404).end()
+      }
+    })
+    .catch(error => next(error))
 })
 
-// 3.4: Borrar un contacto
-app.delete('/api/persons/:id', (request, response) => {
-  const id = Number(request.params.id)
-  persons = persons.filter(p => p.id !== id)
-
-  response.status(204).end()
+// 3.15: Eliminar un contacto de la base de datos
+app.delete('/api/persons/:id', (request, response, next) => {
+  Person.findByIdAndDelete(request.params.id)
+    .then(result => {
+      response.status(204).end()
+    })
+    .catch(error => next(error))
 })
 
-// 3.5 y 3.6: Añadir un contacto con validaciones
-app.post('/api/persons', (request, response) => {
+// 3.14: Guardar un nuevo contacto en la base de datos
+app.post('/api/persons', (request, response, next) => {
   const body = request.body
 
-  // Validación: faltan datos
   if (!body.name || !body.number) {
     return response.status(400).json({ 
       error: 'name or number is missing' 
     })
   }
 
-  // Validación: nombre duplicado
-  const nameExists = persons.some(p => p.name === body.name)
-  if (nameExists) {
-    return response.status(400).json({ 
-      error: 'name must be unique' 
-    })
-  }
-
-  // Generar ID aleatorio
-  const person = {
-    id: Math.floor(Math.random() * 1000000),
+  const person = new Person({
     name: body.name,
-    number: body.number
-  }
+    number: body.number,
+  })
 
-  persons = persons.concat(person)
-
-  response.json(person)
+  person.save()
+    .then(savedPerson => {
+      response.json(savedPerson)
+    })
+    .catch(error => next(error))
 })
 
-// Middleware de rutas desconocidas
+// 3.17: Actualizar el número de un contacto existente
+app.put('/api/persons/:id', (request, response, next) => {
+  const body = request.body
+
+  const person = {
+    name: body.name,
+    number: body.number,
+  }
+
+  Person.findByIdAndUpdate(request.params.id, person, { new: true })
+    .then(updatedPerson => {
+      response.json(updatedPerson)
+    })
+    .catch(error => next(error))
+})
+
+// Middlewares finales
 const unknownEndpoint = (request, response) => {
   response.status(404).send({ error: 'unknown endpoint' })
 }
 app.use(unknownEndpoint)
+
+// 3.16: Middleware centralizado de manejo de errores
+const errorHandler = (error, request, response, next) => {
+  console.error(error.message)
+
+  if (error.name === 'CastError') {
+    return response.status(400).send({ error: 'malformatted id' })
+  }
+
+  next(error)
+}
+app.use(errorHandler)
 
 const PORT = process.env.PORT || 3001
 app.listen(PORT, () => {
