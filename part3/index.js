@@ -52,7 +52,7 @@ app.get('/api/persons/:id', (request, response, next) => {
 // 3.15: Eliminar un contacto de la base de datos
 app.delete('/api/persons/:id', (request, response, next) => {
   Person.findByIdAndDelete(request.params.id)
-    .then(result => {
+    .then(() => {
       response.status(204).end()
     })
     .catch(error => next(error))
