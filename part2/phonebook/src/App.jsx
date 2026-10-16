@@ -94,6 +94,9 @@ const App = () => {
         setNewNumber('')
         showNotification(`Added ${returnedPerson.name}`, 'success')
       })
+      .catch(error => {
+      console.log(error.response.data.error)
+    })
   }
 
   const deletePerson = (id, name) => {
