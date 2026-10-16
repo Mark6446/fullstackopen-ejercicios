@@ -1,9 +1,11 @@
 const express = require('express')
 const morgan = require('morgan')
+const cors = require('cors')
 const app = express()
-
+app.use(cors())
 // Middleware para parsear el body de las peticiones a JSON
 app.use(express.json())
+app.use(express.static('dist'))
 
 // Configuración de Morgan (Ejercicios 3.7 y 3.8)
 // Creamos un token personalizado llamado "body" que devuelve el JSON enviado en las peticiones POST
@@ -114,7 +116,7 @@ const unknownEndpoint = (request, response) => {
 }
 app.use(unknownEndpoint)
 
-const PORT = 3001
+const PORT = process.env.PORT || 3001
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`)
 })
