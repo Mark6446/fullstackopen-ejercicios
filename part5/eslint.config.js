@@ -38,5 +38,13 @@ export default [
       'no-console': 'off',
       'react/prop-types': 'off'
     }
+  },
+  {
+    files: ['**/*.test.{js,jsx}'],
+    languageOptions: {
+      globals: {
+        ...globals.vitest
+      }
+    }
   }
 ]
