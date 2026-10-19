@@ -1,47 +1,49 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 
 const BlogForm = ({ createBlog }) => {
-  const [title, setTitle] = useState('')
-  const [author, setAuthor] = useState('')
-  const [url, setUrl] = useState('')
+  const [newTitle, setNewTitle] = useState('')
+  const [newAuthor, setNewAuthor] = useState('')
+  const [newUrl, setNewUrl] = useState('')
+  
+  const navigate = useNavigate()
 
-  const addBlog = (event) => {
+  const addBlog = async (event) => {
     event.preventDefault()
-    createBlog({ title, author, url })
-    setTitle('')
-    setAuthor('')
-    setUrl('')
+    await createBlog({
+      title: newTitle,
+      author: newAuthor,
+      url: newUrl
+    })
+
+    setNewTitle('')
+    setNewAuthor('')
+    setNewUrl('')
+    
+    navigate('/')
   }
 
   return (
     <div>
       <h2>create new</h2>
+
       <form onSubmit={addBlog}>
         <div>
-          title:
-          <input
-            type="text"
-            value={title}
-            name="Title"
-            onChange={({ target }) => setTitle(target.value)}
+          title: <input
+            value={newTitle}
+            onChange={event => setNewTitle(event.target.value)}
           />
         </div>
         <div>
-          author:
-          <input
-            type="text"
-            value={author}
-            name="Author"
-            onChange={({ target }) => setAuthor(target.value)}
+          author: <input
+            value={newAuthor}
+            onChange={event => setNewAuthor(event.target.value)}
           />
         </div>
         <div>
-          url:
-          <input
-            type="text"
-            value={url}
-            name="Url"
-            onChange={({ target }) => setUrl(target.value)}
+          url: <input
+            value={newUrl}
+            onChange={event => setNewUrl(event.target.value)}
           />
         </div>
         <button type="submit">create</button>

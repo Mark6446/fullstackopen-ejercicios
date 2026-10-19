@@ -1,19 +1,25 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router-dom'
 import BlogForm from './BlogForm'
+import { expect, test, vi } from 'vitest'
 
 test('<BlogForm /> updates parent state and calls onSubmit', async () => {
   const createBlog = vi.fn()
   const user = userEvent.setup()
 
-  // Para poder encontrar los inputs de forma robusta, podemos buscarlos por su "name"
-  // O podemos añadir placeholders en el componente. Vamos a usar un selector de CSS que busca por el atributo 'name'
-  const { container } = render(<BlogForm createBlog={createBlog} />)
+  // Renderizamos el componente envuelto en MemoryRouter
+  const { container } = render(
+    <MemoryRouter>
+      <BlogForm createBlog={createBlog} />
+    </MemoryRouter>
+  )
 
-  // Seleccionamos los inputs usando container.querySelector
-  const titleInput = container.querySelector('input[name="Title"]')
-  const authorInput = container.querySelector('input[name="Author"]')
-  const urlInput = container.querySelector('input[name="Url"]')
+  // Seleccionamos los inputs por su etiqueta genérica (sabemos el orden exacto)
+  const inputs = container.querySelectorAll('input')
+  const titleInput = inputs[0]
+  const authorInput = inputs[1]
+  const urlInput = inputs[2]
   
   const sendButton = screen.getByText('create')
 
@@ -22,10 +28,10 @@ test('<BlogForm /> updates parent state and calls onSubmit', async () => {
   await user.type(authorInput, 'Autor de prueba')
   await user.type(urlInput, 'http://prueba.com')
   
-  // Enviamos
+  // Enviamos el formulario
   await user.click(sendButton)
 
-  // Verificamos
+  // Comprobaciones
   expect(createBlog.mock.calls).toHaveLength(1)
   expect(createBlog.mock.calls[0][0].title).toBe('Mi titulo de prueba')
   expect(createBlog.mock.calls[0][0].author).toBe('Autor de prueba')

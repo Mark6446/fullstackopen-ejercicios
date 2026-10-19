@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
+import { BrowserRouter as Router, Routes, Route, Link, Navigate } from 'react-router-dom'
 import Blog from './components/Blog'
 import BlogForm from './components/BlogForm'
-import Togglable from './components/Togglable'
 import blogService from './services/blogs'
 import loginService from './services/login'
+import BlogDetails from './components/BlogDetails'
 
 const Notification = ({ message, type }) => {
   if (message === null) return null
@@ -17,8 +18,6 @@ const App = () => {
   const [password, setPassword] = useState('')
   const [user, setUser] = useState(null)
   const [notification, setNotification] = useState({ message: null, type: null })
-
-  const blogFormRef = useRef()
 
   useEffect(() => {
     blogService.getAll().then(initialBlogs => setBlogs(initialBlogs))
@@ -61,7 +60,6 @@ const App = () => {
 
   const addBlog = async (blogObject) => {
     try {
-      blogFormRef.current.toggleVisibility() // Cierra el formulario tras crear
       const returnedBlog = await blogService.create(blogObject)
       returnedBlog.user = { id: user.id, username: user.username, name: user.name }
       setBlogs(blogs.concat(returnedBlog))
@@ -105,24 +103,66 @@ const App = () => {
   // Ordenar blogs por likes
   const sortedBlogs = [...blogs].sort((a, b) => b.likes - a.likes)
 
-  return (
-    <div>
-      <Notification message={notification.message} type={notification.type} />
-      {user === null ? loginForm() : (
-        <div>
-          <h2>blogs</h2>
-          <p>{user.name} logged in <button onClick={handleLogout}>logout</button></p>
-
-          <Togglable buttonLabel="new blog" ref={blogFormRef}>
-            <BlogForm createBlog={addBlog} />
-          </Togglable>
-          <br/>
-          {sortedBlogs.map(blog =>
-            <Blog key={blog.id} blog={blog} updateBlog={updateBlog} deleteBlog={deleteBlog} currentUser={user} />
+ return (
+    <Router>
+      <div>
+        <Notification message={notification.message} type={notification.type} />
+        
+        {/* Barra de navegación constante */}
+        <div style={{ background: 'lightgray', padding: '10px', marginBottom: '20px' }}>
+          <Link style={{ padding: 5 }} to="/">blogs</Link>
+          <Link style={{ padding: 5 }} to="/create">create new</Link>
+          {user ? (
+            <span>
+              {user.name} logged in <button onClick={handleLogout}>logout</button>
+            </span>
+          ) : (
+            <Link style={{ padding: 5 }} to="/login">login</Link>
           )}
         </div>
-      )}
-    </div>
+
+        {/* Sistema de Rutas */}
+        <Routes>
+          <Route path="/login" element={
+            // Si ya hay usuario, lo redirigimos a la raíz; si no, mostramos el login
+            user ? <Navigate replace to="/" /> : loginForm()
+          } />
+          {/* Ruta de login */}
+
+         <Route path="/blogs/:id" element={
+            <BlogDetails 
+              blogs={blogs} 
+              updateBlog={updateBlog} 
+              deleteBlog={deleteBlog} 
+              currentUser={user} 
+            />
+          } />
+
+          {/* RUTA CREAR BLOGS */}
+          <Route path="/create" element={
+            user ? <BlogForm createBlog={addBlog} /> : <Navigate replace to="/login" />
+          } />
+
+          {/* RUTA RAÍZ */}
+          <Route path="/" element={
+            user === null ? <Navigate replace to="/login" /> : (
+              <div>
+                <h2>blog app</h2>
+                {sortedBlogs.map(blog =>
+                  <Blog 
+                    key={blog.id} 
+                    blog={blog} 
+                    updateBlog={updateBlog} 
+                    deleteBlog={deleteBlog} 
+                    currentUser={user} 
+                  />
+                )}
+              </div>
+            )
+          } />
+        </Routes>
+      </div>
+    </Router>
   )
 }
 
